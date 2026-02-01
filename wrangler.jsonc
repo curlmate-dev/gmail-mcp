@@ -1,0 +1,26 @@
+{
+  "compatibility_date": "2025-03-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "GmailMCP",
+        "name": "GmailMCP"
+      }
+    ]
+  },
+  "main": "src/server.ts",
+  "migrations": [
+    {
+      "new_sqlite_classes": ["GmailMCP"],
+      "tag": "v1"
+    }
+  ],
+  "observability": {
+    "logs": {
+      "enabled": false,
+      "invocation_logs": true
+    }
+  },
+  "name": "gmail-mcp"
+}
