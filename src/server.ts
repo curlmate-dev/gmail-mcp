@@ -91,13 +91,17 @@ export class GmailMCP extends McpAgent<Env, {}> {
     //   }
     // );
     this.server.registerTool(
-      "List-All-Calendars",
+      "search-emails",
       {
-        description: "this tool lists all Calendars of User",
-        inputSchema: { }
+        description: "this tool lists all emails matching search query",
+        inputSchema: { 
+          q: z.string()
+        }
       },
-      async ({ }, { requestInfo }) => {
-        const response = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
+      async ({ q }, { requestInfo }) => {
+        const params = new URLSearchParams();
+        params.set("q", q )
+        const response = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`, {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${requestInfo?.headers["access-token"]}`,
@@ -241,7 +245,7 @@ export class GmailMCP extends McpAgent<Env, {}> {
 
   
   onError(_: unknown, error?: unknown): void | Promise<void> {
-    console.error("GoogleCalendarMCP initialization error:", error);
+    console.error("GmailMCP initialization error:", error);
 
     // Provide more specific error messages based on error type
     if (error instanceof Error) {
