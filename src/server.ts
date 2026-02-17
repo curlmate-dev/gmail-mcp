@@ -2,6 +2,26 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpAgent } from "agents/mcp";
 import { z } from "zod";
 
+const zAccessTokenResponse = z.object({
+  accessToken: z.string(),
+})
+
+async function getAccessToken(jwt: string | undefined, connection: string | undefined) {
+  if(!jwt || !connection) {
+    throw new Error("missing jwt or connection in header");
+  }
+  const res = await fetch("https://curlmate.dev/api/token", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      "x-connection": connection
+    }
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+  const data = zAccessTokenResponse.parse(await res.json());
+  return data.accessToken;
+}
 
 export class GmailMCP extends McpAgent<Env, {}> {
   server = new McpServer({
@@ -10,86 +30,6 @@ export class GmailMCP extends McpAgent<Env, {}> {
   });
 
   async init() {
-    // this.server.registerTool(
-    //   "get-notion-page-format",
-    //   {
-    //     description: "get the sample page format",
-    //     inputSchema: { }
-    //   },
-    //   async ({  }) => {
-
-    //     return {
-    //       content: [
-    //         {
-    //           text: JSON.stringify({
-    //             "parent": {
-    //               "data_source_id": "d9824bdc84454327be8b5b47500af6ce"
-    //             },
-    //             "icon": {
-    //               "emoji": "🥬"
-    //             },
-    //             "cover": {
-    //               "external": {
-    //                 "url": "https://upload.wikimedia.org/wikipedia/commons/6/62/Tuscankale.jpg"
-    //               }
-    //             },
-    //             "properties": {
-    //               "Name": {
-    //                 "title": [
-    //                   {
-    //                     "text": {
-    //                       "content": "Tuscan Kale"
-    //                     }
-    //                   }
-    //                 ]
-    //               },
-    //               "Description": {
-    //                 "rich_text": [
-    //                   {
-    //                     "text": {
-    //                       "content": "A dark green leafy vegetable"
-    //                     }
-    //                   }
-    //                 ]
-    //               },
-    //               "Food group": {
-    //                 "select": {
-    //                   "name": "Vegetable"
-    //                 }
-    //               },
-    //               "Price": { "number": 2.5 }
-    //             },
-    //             "children": [
-    //               {
-    //                 "object": "block",
-    //                 "type": "heading_2",
-    //                 "heading_2": {
-    //                   "rich_text": [{ "type": "text", "text": { "content": "Lacinato kale" } }]
-    //                 }
-    //               },
-    //               {
-    //                 "object": "block",
-    //                 "type": "paragraph",
-    //                 "paragraph": {
-    //                   "rich_text": [
-    //                     {
-    //                       "type": "text",
-    //                       "text": {
-    //                         "content": "Lacinato kale is a variety of kale with a long tradition in Italian cuisine, especially that of Tuscany. It is also known as Tuscan kale, Italian kale, dinosaur kale, kale, flat back kale, palm tree kale, or black Tuscan palm.",
-    //                         "link": { "url": "https://en.wikipedia.org/wiki/Lacinato_kale" }
-    //                       }
-    //                     }
-    //                   ]
-    //                 }
-    //               }
-    //             ]
-    //           }),
-    //           type: "text"
-    //         }
-    //       ]
-    //     };
-    //   }
-    // );
     this.server.registerTool(
       "search-emails",
       {
@@ -99,12 +39,15 @@ export class GmailMCP extends McpAgent<Env, {}> {
         }
       },
       async ({ q }, { requestInfo }) => {
+        const jwt = requestInfo?.headers["access-token"] as string | undefined;
+        const connection = requestInfo?.headers["x-connection"] as string | undefined;
+        const accessToken = await getAccessToken(jwt, connection);
         const params = new URLSearchParams();
         params.set("q", q )
         const response = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`, {
           method: "GET",
           headers: {
-            "Authorization": `Bearer ${requestInfo?.headers["access-token"]}`,
+            "Authorization": `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           }
         })
@@ -130,92 +73,20 @@ export class GmailMCP extends McpAgent<Env, {}> {
         };
       }
     );
-    // this.server.registerTool(
-    //   "create-notion-page",
-    //   {
-    //     description: "this tool lists all notion pages",
-    //     inputSchema: {  pageData: z.string()}
-    //   },
-    //   async ({  pageData }, { requestInfo }) => {
-    //     const response = await fetch("https://api.notion.com/v1/pages", {
-    //       method: "POST",
-    //       headers: {
-    //         "Authorization": `Bearer ${requestInfo?.headers["access-token"]}`,
-    //         "Content-Type": "application/json",
-    //         "Notion-Version": "2022-06-28"
-    //       },
-    //       body: pageData
-    //     })
-
-    //     if (!response.ok) {
-    //       return {
-    //         content: [
-    //           {
-    //             text: JSON.stringify(await response.text()),
-    //             type: "text"
-    //           }
-    //         ]
-    //       }
-    //     }
-
-    //     return {
-    //       content: [
-    //         {
-    //           text: JSON.stringify(await response.json()),
-    //           type: "text"
-    //         }
-    //       ]
-    //     };
-    //   }
-    // );
-    // this.server.registerTool(
-    //   "fetch-notion-page",
-    //   {
-    //     description: "this tool fetches a notion page",
-    //     inputSchema: { pageId: z.string()}
-    //   },
-    //   async ({ pageId }, { requestInfo }) => {
-    //     const response = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
-    //       method: "GET",
-    //       headers: {
-    //         "Authorization": `Bearer ${requestInfo?.headers["access-token"]}`,
-    //         "Content-Type": "application/json",
-    //         "Notion-Version": "2022-06-28"
-    //       }
-    //     })
-
-    //     if (!response.ok) {
-    //       return {
-    //         content: [
-    //           {
-    //             text: JSON.stringify(await response.text()),
-    //             type: "text"
-    //           }
-    //         ]
-    //       }
-    //     }
-
-    //     return {
-    //       content: [
-    //         {
-    //           text: JSON.stringify(await response.json()),
-    //           type: "text"
-    //         }
-    //       ]
-    //     };
-    //   }
-    // );
     this.server.registerTool(
       "authenticated-user",
       {
         description: "this tool lists the authenticated user",
         inputSchema: { }
       },
-      async ({}, {requestInfo}) => {
+      async ({}, { requestInfo }) => {
+        const jwt = requestInfo?.headers["access-token"] as string | undefined;
+        const connection = requestInfo?.headers["x-connection"] as string | undefined;
+        const accessToken = await getAccessToken(jwt, connection);
         const response = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo`, {
           method: "GET",
           headers: {
-            "Authorization": `Bearer ${requestInfo?.headers["access-token"]}`,
+            "Authorization": `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           }
         })
@@ -243,25 +114,8 @@ export class GmailMCP extends McpAgent<Env, {}> {
     );
   }
 
-  
   onError(_: unknown, error?: unknown): void | Promise<void> {
     console.error("GmailMCP initialization error:", error);
-
-    // Provide more specific error messages based on error type
-    if (error instanceof Error) {
-      if (error.message.includes("counter")) {
-        console.error(
-          "Failed to initialize counter resource. Please check the counter configuration."
-        );
-      } else if (error.message.includes("tool")) {
-        console.error(
-          "Failed to register MCP tools. Please verify tool configurations."
-        );
-      } else {
-        // Fall back to default error handling
-        console.error(error);
-      }
-    }
   }
 }
 
@@ -269,7 +123,6 @@ export default {
   fetch(request: Request, env: unknown, ctx: ExecutionContext) {
     const url = new URL(request.url);
 
-    // support both legacy SSE and new streamable-http
     if (url.pathname.startsWith("/sse")) {
       return GmailMCP.serveSSE("/sse", { binding: "GmailMCP" }).fetch(
         request,
