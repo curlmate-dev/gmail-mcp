@@ -80,7 +80,7 @@ export class GmailMCP extends McpAgent<Env, {}> {
         inputSchema: { }
       },
       async ({}, { requestInfo }) => {
-        const jwt = requestInfo?.headers["authorization"] as string | undefined;
+        const jwt = requestInfo?.headers["access-token"] as string | undefined;
         const connection = requestInfo?.headers["x-connection"] as string | undefined;
         const accessToken = await getAccessToken(jwt, connection);
         const response = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo`, {
