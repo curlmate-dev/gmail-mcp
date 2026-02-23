@@ -6,11 +6,13 @@ const zAccessTokenResponse = z.object({
   accessToken: z.string(),
 })
 
+const CURLMATE_BASE_URL = "https://api.curlmate.dev/token";
+
 async function getAccessToken(jwt: string | undefined, connection: string | undefined) {
   if(!jwt || !connection) {
     throw new Error("missing jwt or connection in header");
   }
-  const res = await fetch("https://curlmate.dev/api/token", {
+  const res = await fetch(CURLMATE_BASE_URL, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${jwt}`,
